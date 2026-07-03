@@ -144,7 +144,7 @@ async def ask(request: AskRequest):
             ticket = create_ticket(description)
             action_taken = "create_ticket"
             action_result = ticket
-            response_text = f"✅ Ticket #{ticket['ticket_id']} created successfully!"
+            response_text = f" Ticket #{ticket['ticket_id']} created successfully!"
             
         elif action == "fetch_employee":
             name = parameters.get("name", "")
@@ -154,7 +154,7 @@ async def ask(request: AskRequest):
             if "error" in employee:
                 response_text = employee["error"]
             else:
-                response_text = f"👤 **{employee['name']}** | Department: {employee['department']} | Email: {employee['email']}"
+                response_text = f" **{employee['name']}** | Department: {employee['department']} | Email: {employee['email']}"
         
         # Step 3: Update memory
         update_memory(request.session_id, request.question, response_text)
