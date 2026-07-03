@@ -3,17 +3,25 @@ import json
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from openai import OpenAI
 from dotenv import load_dotenv
+
+# ========== NEW: Import Gemini Library ==========
+import google.generativeai as genai
+
 
 # Load environment variables
 load_dotenv()
 
+# ========== NEW: Configure Gemini ==========
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in .env file")
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-1.0-pro")
+
 # Initialize FastAPI
 app = FastAPI(title="AI Enterprise Assistant", version="1.0")
-
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ===================== MODELS =====================
 class AskRequest(BaseModel):
@@ -73,10 +81,10 @@ def update_memory(session_id: str, user_msg: str, assistant_msg: str):
     if len(memory) > 10:
         conversation_memory[session_id] = memory[-10:]
 
-# ===================== LLM PROCESSING =====================
+# ===================== LLM PROCESSING (Updated for Gemini) =====================
 def process_question(question: str, session_id: str) -> dict:
     """
-    Process user question using LLM and decide business action.
+    Process user question using Gemini LLM and decide business action.
     """
     memory = get_memory(session_id)
     
@@ -99,23 +107,44 @@ def process_question(question: str, session_id: str) -> dict:
     }
     """
     
-    # Prepare messages with memory
-    messages = [
-        {"role": "system", "content": system_prompt},
-        *memory,
-        {"role": "user", "content": question}
-    ]
+    # Prepare messages with memory (Gemini uses a different format)
+    # We'll combine system prompt, memory, and new question into a single prompt
+    prompt_text = system_prompt + "\n\n"
     
-    # Call OpenAI
+    # Add memory context
+    for msg in memory:
+        role = msg["role"]
+        content = msg["content"]
+        prompt_text += f"{role}: {content}\n"
+    
+    # Add the current question
+    prompt_text += f"user: {question}\n"
+    prompt_text += "assistant: "
+    
+    # Call Gemini
     try:
-        completion = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            temperature=0.3,
-            response_format={"type": "json_object"}
-        )
-        result = json.loads(completion.choices[0].message.content)
-        return result
+        response = model.generate_content(prompt_text)
+        
+        # Gemini returns plain text, we need to parse JSON from it
+        # Try to extract JSON from the response
+        response_text = response.text.strip()
+        
+        # Find JSON in the response (handle possible extra text)
+        # Look for content between { and }
+        if "{" in response_text and "}" in response_text:
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            json_str = response_text[start:end]
+            result = json.loads(json_str)
+            return result
+        else:
+            # If no JSON, treat as a regular answer
+            return {
+                "action": "answer",
+                "response": response_text,
+                "parameters": {}
+            }
+            
     except Exception as e:
         # Fallback for error handling
         return {
@@ -144,7 +173,7 @@ async def ask(request: AskRequest):
             ticket = create_ticket(description)
             action_taken = "create_ticket"
             action_result = ticket
-            response_text = f" Ticket #{ticket['ticket_id']} created successfully!"
+            response_text = f"✅ Ticket #{ticket['ticket_id']} created successfully!"
             
         elif action == "fetch_employee":
             name = parameters.get("name", "")
@@ -154,7 +183,7 @@ async def ask(request: AskRequest):
             if "error" in employee:
                 response_text = employee["error"]
             else:
-                response_text = f" **{employee['name']}** | Department: {employee['department']} | Email: {employee['email']}"
+                response_text = f"👤 **{employee['name']}** | Department: {employee['department']} | Email: {employee['email']}"
         
         # Step 3: Update memory
         update_memory(request.session_id, request.question, response_text)
