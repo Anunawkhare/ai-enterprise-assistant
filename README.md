@@ -24,3 +24,6 @@ AI Solutions Engineer - 60-Minute Build Challenge
 ## Test Inputs
 - Normal Query: "What is the company leave policy?"
 - Challenging Query: "Create a ticket for server down in production"
+
+## Video Submission
+[Watch the walkthrough video here](your-video-link)
