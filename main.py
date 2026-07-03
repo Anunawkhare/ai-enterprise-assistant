@@ -18,7 +18,7 @@ if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env file")
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.0-pro")
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 # Initialize FastAPI
 app = FastAPI(title="AI Enterprise Assistant", version="1.0")
