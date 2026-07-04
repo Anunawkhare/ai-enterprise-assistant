@@ -26,4 +26,4 @@ AI Solutions Engineer - 60-Minute Build Challenge
 - Challenging Query: "Create a ticket for server down in production"
 
 ## Video Submission
-[Watch the walkthrough video here](your-video-link)
+[Watch the walkthrough video here]https://video.fluid.ai/share/90eec92f-28e0-4b28-88a1-e779cf16946e
